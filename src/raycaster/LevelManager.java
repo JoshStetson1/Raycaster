@@ -47,9 +47,10 @@ public class LevelManager {
                 
                 //objects
                 else if(red == 0 && green == 255 && blue == 0) level[xx][yy] = -2;
-                else if(red == 191 && green == 127 && blue == 0){ level[xx][yy] = -3; s.l.mObj.add(new MovingObject(s, xx*100, yy*100)); addBlock = false;}
+                else if(red == 191 && green == 127 && blue == 0) level[xx][yy] = -3;
                 else if(red == 255 && green == 127 && blue == 0) level[xx][yy] = -4;
                 else if(red == 191 && green == 191 && blue == 191){ level[xx][yy] = -5; addBlock = false;}
+                else if(red == 0 && green == 0 && blue == 127){ level[xx][yy] = -6; s.l.mObj.add(new MovingObject(s, xx*100, yy*100)); addBlock = false;}
                 
                 //other
                 else if(red == 0 && green == 0 && blue == 255){//pixel is blue, set player position
@@ -64,12 +65,8 @@ public class LevelManager {
                 }
 
                 if(addBlock) s.l.b.add(new Block(s, xx*100, yy*100, s.l.b.size()+1));
-                
-                System.out.print(level[xx][yy]);
             }
-            System.out.println();
         }
-        System.out.println("\n");
     }
     public int[][] create(BufferedImage img){
         int w = img.getWidth();
@@ -95,12 +92,8 @@ public class LevelManager {
                 else if(red == 191 && green == 127 && blue == 0) level[xx][yy] = 8;
                 else if(red == 166 && green == 127 && blue == 77) level[xx][yy] = 9;
                 else level[xx][yy] = -1;
-                
-                System.out.print(level[xx][yy]);
             }
-            System.out.println();
         }
-        System.out.println("\n");
         
         return level;
     }

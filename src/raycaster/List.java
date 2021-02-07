@@ -13,6 +13,7 @@ public class List {
         this.s = s;
     }
     public void tick(){
+        ///*
         for(int i = 0; i < b.size(); i++){
             Block tempBlock = b.get(i);
             //collisions
@@ -21,6 +22,7 @@ public class List {
             if(s.p.left().intersects(tempBlock.block())) s.p.x = tempBlock.x+125;
             if(s.p.right().intersects(tempBlock.block())) s.p.x = tempBlock.x-25;
         }
+        //*/
         for(int i = 0; i < mObj.size(); i++){
             MovingObject obj = mObj.get(i);
             obj.tick();

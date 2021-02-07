@@ -5,11 +5,11 @@ import java.util.LinkedList;
 
 public class MovingObject {
     Screen s;
-    double a, x, y, velX=-1, velY, dx, dy, xOff, yOff;
+    double a, x, y, velX, velY, dx, dy, xOff, yOff;
     int mapX, mapY;
     
     boolean[] moving = new boolean[4];
-    int speed = 20;
+    int speed = 50;
     
     LinkedList<int[]> spots = new LinkedList<>();
     
@@ -24,39 +24,26 @@ public class MovingObject {
         findPOS();
     }
     public void tick(){
-        int pointX = (int)((x+(velX*50))/100);
-        int pointY = (int)((y+(velY*50))/100);
+        x += velX;
+        y += velY;
         
-        if(s.lm.level[pointX][mapY] == -1 || s.lm.level[pointX][mapY] == -3) x += velX;
-        if(s.lm.level[mapX][pointY] == -1 || s.lm.level[mapX][pointY] == -3) y += velY;
-        
+        moveAndColl();
         findPOS();
     }
-    public void movement(){
-        //rotations
-        if(moving[3]){//looking left
-            a -= 0.017 *s.deltaTime;
-            if(a < 0) a+=2*Math.PI;
-            dx = Math.cos(a)*30;
-            dy = Math.sin(a)*30;
-        } else if(moving[2]){//looking right
-            a += 0.017 *s.deltaTime;
-            if(a > 2*Math.PI) a-=2*Math.PI;
-            dx = Math.cos(a)*30;
-            dy = Math.sin(a)*30;
-        }
-        //movement
-        if(moving[0]){//move forwards
-            velX = dx/speed *s.deltaTime;
-            velY = dy/speed *s.deltaTime;
-        } else if(moving[1]){//move backwards
-            velX = -dx/speed *s.deltaTime;
-            velY = -dy/speed *s.deltaTime;
-        }
-        if(!moving[0] && !moving[1]){//not moving, slow down
-            velX = 0;
-            velY = 0;
-        }
+    public void moveAndColl(){
+        a = Math.atan2(s.p.y - y, s.p.x - x);
+        
+        dx = Math.cos(a)*50;
+        dy = Math.sin(a)*50;
+        velX = dx/speed *s.deltaTime;
+        velY = dy/speed *s.deltaTime;
+        
+        int pointX = (int)((x+(dx+velX))/100);
+        int pointY = (int)((y+(dy+velY))/100);
+
+        //block collisisons
+        if(s.lm.level[pointX][mapY] > 0 || (pointX == (int)(s.p.x/100) && pointY == (int)(s.p.y/100))) velX = 0;
+        if(s.lm.level[mapX][pointY] > 0 || (pointX == (int)(s.p.x/100) && pointY == (int)(s.p.y/100))) velY = 0;
     }
     public void findPOS(){
         xOff = x - ((mapX*100)+50);
@@ -73,7 +60,7 @@ public class MovingObject {
         s.lm.level[mapX][mapY] = -1;
         mapX = mapX+offsetX;
         mapY = mapY+offsetY;
-        s.lm.level[mapX][mapY] = -3;
+        s.lm.level[mapX][mapY] = -6;
         
         for(int i = 0; i < spots.size(); i++){
             int[] point = spots.get(i);
@@ -95,15 +82,15 @@ public class MovingObject {
         int mx = mapX;
         int my = mapY;
         
-        if(up != my && s.lm.level[mx][up] == -1){ s.lm.level[mx][up] = -3; int[] point = {mx, up}; spots.add(point);}
-        if(down != my && s.lm.level[mx][down] == -1){ s.lm.level[mx][down] = -3; int[] point = {mx, down}; spots.add(point);}
-        if(left != mx && s.lm.level[left][my] == -1){ s.lm.level[left][my] = -3;  int[] point = {left, my}; spots.add(point);}
-        if(right != mx && s.lm.level[right][my] == -1){ s.lm.level[right][my] = -3; int[] point = {right, my}; spots.add(point);}
+        if(up != my && s.lm.level[mx][up] == -1){ s.lm.level[mx][up] = -6; int[] point = {mx, up}; spots.add(point);}
+        if(down != my && s.lm.level[mx][down] == -1){ s.lm.level[mx][down] = -6; int[] point = {mx, down}; spots.add(point);}
+        if(left != mx && s.lm.level[left][my] == -1){ s.lm.level[left][my] = -6;  int[] point = {left, my}; spots.add(point);}
+        if(right != mx && s.lm.level[right][my] == -1){ s.lm.level[right][my] = -6; int[] point = {right, my}; spots.add(point);}
         
-        if(UR && s.lm.level[right][up] == -1){ s.lm.level[right][up] = -3; int[] point = {right, up}; spots.add(point);}
-        if(DR && s.lm.level[right][down] == -1){ s.lm.level[right][down] = -3;  int[] point = {right, down}; spots.add(point);}
-        if(UL && s.lm.level[left][up] == -1){ s.lm.level[left][up] = -3; int[] point = {left, up}; spots.add(point);}
-        if(DL && s.lm.level[left][down] == -1){ s.lm.level[left][down] = -3; int[] point = {left, down}; spots.add(point);}
+        if(UR && s.lm.level[right][up] == -1){ s.lm.level[right][up] = -6; int[] point = {right, up}; spots.add(point);}
+        if(DR && s.lm.level[right][down] == -1){ s.lm.level[right][down] = -6;  int[] point = {right, down}; spots.add(point);}
+        if(UL && s.lm.level[left][up] == -1){ s.lm.level[left][up] = -6; int[] point = {left, up}; spots.add(point);}
+        if(DL && s.lm.level[left][down] == -1){ s.lm.level[left][down] = -6; int[] point = {left, down}; spots.add(point);}
     }
     public void drawObj(Graphics g, double[] info, double ra){
         if(info[5] < 0) info[5] = -1*info[5]-2;

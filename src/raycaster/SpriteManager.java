@@ -12,7 +12,7 @@ public final class SpriteManager {
     BufferedImage[] textures = new BufferedImage[10];
     BufferedImage[] flippedTex = new BufferedImage[10];
     
-    BufferedImage[] objects = new BufferedImage[4];
+    BufferedImage[] objects = new BufferedImage[5];
     
     public SpriteManager(Screen s){
         this.s = s;
@@ -46,6 +46,7 @@ public final class SpriteManager {
         objects[1] = loadImage("paint\\objects\\barrel.png");
         objects[2] = loadImage("paint\\objects\\fire.png");
         objects[3] = loadImage("paint\\objects\\greenlight.png");
+        objects[4] = loadImage("paint\\objects\\enemy.png");
     }
     
     public BufferedImage loadImage(String path){

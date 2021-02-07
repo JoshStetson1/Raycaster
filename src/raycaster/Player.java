@@ -15,7 +15,7 @@ public class Player {
     int res = 2;//resolution
     int resG = 2;//ground resolution
     
-    int speed = 7;
+    int speed = 10;
     int size = 2;
     
     BufferedImage sunset;
@@ -33,27 +33,24 @@ public class Player {
         y += velY;
         
         movement();
+        //collisions();
     }
     public void movement(){
         if(s.miniMap){//cant move while looking at minimap
             for(int i = 0; i < moving.length; i++) moving[i] = false;
         }
-        int[] front = {(int)((dx*size + x)/100), (int)((dy*size + y)/100)};
-        int[] back = {(int)((-dx*size + x)/100), (int)((-dy*size + y)/100)};
-        int[] left = {(int)((-(Math.cos(pa+(Math.PI*0.5)))*30*size + x)/100), (int)(((Math.sin(pa-(Math.PI*0.5)))*30*size + y)/100)};
-        int[] right = {(int)(((Math.cos(pa+(Math.PI*0.5)))*30*size + x)/100), (int)((-(Math.sin(pa-(Math.PI*0.5)))*30*size + y)/100)};
         
         //rotations
         if(moving[4]){//looking left
             pa -= 0.017 *s.deltaTime;
             if(pa < 0) pa+=2*Math.PI;
-            dx = Math.cos(pa)*30;
-            dy = Math.sin(pa)*30;
+            dx = Math.cos(pa)*50;
+            dy = Math.sin(pa)*50;
         } else if(moving[5]){//looking right
             pa += 0.017 *s.deltaTime;
             if(pa > 2*Math.PI) pa-=2*Math.PI;
-            dx = Math.cos(pa)*30;
-            dy = Math.sin(pa)*30;
+            dx = Math.cos(pa)*50;
+            dy = Math.sin(pa)*50;
         }
         //movement
         if(moving[0]){//move forwards
@@ -65,24 +62,59 @@ public class Player {
         }
         if(moving[2]){//move left
             if(moving[0] || moving[1]){
-                velX = ((velX*speed)-(Math.cos(pa+(Math.PI*0.5))*30))/(speed*5) *s.deltaTime;
-                velY = ((velY*speed)+(Math.sin(pa-(Math.PI*0.5))*30))/(speed*5) *s.deltaTime;
+                velX = ((velX*speed)-(Math.cos(pa+(Math.PI*0.5))*50))/(speed*5) *s.deltaTime;
+                velY = ((velY*speed)+(Math.sin(pa-(Math.PI*0.5))*50))/(speed*5) *s.deltaTime;
             } else{
-                velX = -(Math.cos(pa+(Math.PI*0.5))*30)/speed *s.deltaTime;
-                velY = (Math.sin(pa-(Math.PI*0.5))*30)/speed *s.deltaTime;
+                velX = -(Math.cos(pa+(Math.PI*0.5))*50)/speed *s.deltaTime;
+                velY = (Math.sin(pa-(Math.PI*0.5))*50)/speed *s.deltaTime;
             }
         } else if(moving[3]){//move right
             if(moving[0] || moving[1]){
-                velX = ((velX*speed)+(Math.cos(pa+(Math.PI*0.5))*30))/(speed*5) *s.deltaTime;
-                velY = ((velY*speed)-(Math.sin(pa-(Math.PI*0.5))*30))/(speed*5) *s.deltaTime;
+                velX = ((velX*speed)+(Math.cos(pa+(Math.PI*0.5))*50))/(speed*5) *s.deltaTime;
+                velY = ((velY*speed)-(Math.sin(pa-(Math.PI*0.5))*50))/(speed*5) *s.deltaTime;
             } else{
-                velX = (Math.cos(pa+(Math.PI*0.5))*30)/speed *s.deltaTime;
-                velY = -(Math.sin(pa-(Math.PI*0.5))*30)/speed *s.deltaTime;
+                velX = (Math.cos(pa+(Math.PI*0.5))*50)/speed *s.deltaTime;
+                velY = -(Math.sin(pa-(Math.PI*0.5))*50)/speed *s.deltaTime;
             }
         }
         if(!moving[0] && !moving[1] && !moving[2] && !moving[3]){//not moving, slow down
             velX = 0;
             velY = 0;
+        }
+    }
+    public void collisions(){
+        int[] front = {(int)((dx*size + x)/100), (int)((dy*size + y)/100)};
+        int[] back = {(int)((-dx*size + x)/100), (int)((-dy*size + y)/100)};
+        int[] left = {(int)((-(Math.cos(pa+(Math.PI*0.5)))*30*size + x)/100), (int)(((Math.sin(pa-(Math.PI*0.5)))*30*size + y)/100)};
+        int[] right = {(int)(((Math.cos(pa+(Math.PI*0.5)))*30*size + x)/100), (int)((-(Math.sin(pa-(Math.PI*0.5)))*30*size + y)/100)};
+        
+        //forward & backward
+        if(moving[0]){
+            int pointX = (int)((x+(dx+velX))/100);
+            int pointY = (int)((y+(dy+velY))/100);
+            
+            if(s.lm.level[pointX][(int)(y/100)] != -1) velX = 0;
+            if(s.lm.level[(int)(x/100)][pointY] != -1) velY = 0;
+        } else if(moving[1]){
+            int pointX = (int)((x+(-dx+velX))/100);
+            int pointY = (int)((y+(-dy+velY))/100);
+            
+            if(s.lm.level[pointX][(int)(y/100)] != -1) velX = 0;
+            if(s.lm.level[(int)(x/100)][pointY] != -1) velY = 0;
+        }
+        //left & right
+        if(moving[2]){
+            int pointX = (int)((x+(-(Math.cos(pa+(Math.PI*0.5)))*50 + velX))/100);
+            int pointY = (int)((y+(Math.sin(pa-(Math.PI*0.5)))*50 + velY)/100);
+            
+            if(s.lm.level[pointX][(int)(y/100)] != -1) velX = 0;
+            if(s.lm.level[(int)(x/100)][pointY] != -1) velY = 0;
+        } else if(moving[3]){
+            int pointX = (int)((x+(Math.cos(pa+(Math.PI*0.5)))*50 + velX)/100);
+            int pointY = (int)((y+(-(Math.sin(pa-(Math.PI*0.5)))*50 + velY))/100);
+            
+            if(s.lm.level[pointX][(int)(y/100)] != -1) velX = 0;
+            if(s.lm.level[(int)(x/100)][pointY] != -1) velY = 0;
         }
     }
     public void paint(Graphics g){
@@ -93,6 +125,7 @@ public class Player {
         draw3DWorld(g);
         
         //g.setColor(Color.red);
+        //g.drawLine((int)x, (int)y, (int)(dx+x), (int)(dy+y));
         //g.fillRect(s.getWidth()/2 -5, s.getHeight()/2 - 5, 10, 10);
     }
     public void moveSky(Graphics g){
@@ -285,7 +318,7 @@ public class Player {
                 if(disT/Math.cos(ca) >= dist){
                     for(int h = 0; h < objects.size(); h++){
                         double[] info = objects.get(h);
-                        if(info[5] == -3){
+                        if(info[5] == -6){
                             int mx = (int)(info[1]/100);
                             int my = (int)(info[2]/100);
                             for(MovingObject obj : s.l.mObj){
