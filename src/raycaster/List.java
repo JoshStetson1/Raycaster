@@ -7,6 +7,7 @@ public class List {
     Screen s;
     
     LinkedList<Block> b = new LinkedList<>();
+    LinkedList<MovingObject> mObj = new LinkedList<>();
     
     public List(Screen s){
         this.s = s;
@@ -20,7 +21,10 @@ public class List {
             if(s.p.left().intersects(tempBlock.block())) s.p.x = tempBlock.x+125;
             if(s.p.right().intersects(tempBlock.block())) s.p.x = tempBlock.x-25;
         }
-        
+        for(int i = 0; i < mObj.size(); i++){
+            MovingObject obj = mObj.get(i);
+            obj.tick();
+        }
     }
     public void paint(Graphics g){//for 2d testing
         for(int i = 0; i < b.size(); i++){

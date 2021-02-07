@@ -12,12 +12,11 @@ public class Player {
     boolean[] moving = new boolean[6];
     
     double dr = (Math.PI*2)/360;//one degree in radians
-    int res = 3;//resolution
+    int res = 2;//resolution
     int resG = 2;//ground resolution
     
     int speed = 7;
     int size = 2;
-    double sensitivity = 2;
     
     BufferedImage sunset;
     
@@ -66,16 +65,16 @@ public class Player {
         }
         if(moving[2]){//move left
             if(moving[0] || moving[1]){
-                velX = ((velX*speed)-(Math.cos(pa+(Math.PI*0.5))*30))/speed/1.5 *s.deltaTime;
-                velY = ((velY*speed)+(Math.sin(pa-(Math.PI*0.5))*30))/speed/1.5 *s.deltaTime;
+                velX = ((velX*speed)-(Math.cos(pa+(Math.PI*0.5))*30))/(speed*5) *s.deltaTime;
+                velY = ((velY*speed)+(Math.sin(pa-(Math.PI*0.5))*30))/(speed*5) *s.deltaTime;
             } else{
                 velX = -(Math.cos(pa+(Math.PI*0.5))*30)/speed *s.deltaTime;
                 velY = (Math.sin(pa-(Math.PI*0.5))*30)/speed *s.deltaTime;
             }
         } else if(moving[3]){//move right
             if(moving[0] || moving[1]){
-                velX = ((velX*speed)+(Math.cos(pa+(Math.PI*0.5))*30))/speed/1.5 *s.deltaTime;
-                velY = ((velY*speed)-(Math.sin(pa-(Math.PI*0.5))*30))/speed/1.5 *s.deltaTime;
+                velX = ((velX*speed)+(Math.cos(pa+(Math.PI*0.5))*30))/(speed*5) *s.deltaTime;
+                velY = ((velY*speed)-(Math.sin(pa-(Math.PI*0.5))*30))/(speed*5) *s.deltaTime;
             } else{
                 velX = (Math.cos(pa+(Math.PI*0.5))*30)/speed *s.deltaTime;
                 velY = -(Math.sin(pa-(Math.PI*0.5))*30)/speed *s.deltaTime;
@@ -93,8 +92,8 @@ public class Player {
         
         draw3DWorld(g);
         
-        g.setColor(Color.red);
-        g.fillRect(s.getWidth()/2 -5, s.getHeight()/2 - 5, 10, 10);
+        //g.setColor(Color.red);
+        //g.fillRect(s.getWidth()/2 -5, s.getHeight()/2 - 5, 10, 10);
     }
     public void moveSky(Graphics g){
         double circleW = s.getWidth()*(2*Math.PI);
@@ -165,7 +164,7 @@ public class Player {
 
                 if(s.lm.level[mx][my] != -1){//if is a block
                     if(s.lm.level[mx][my] < 0){
-                        double[] info = {r, rx, ry, dist(x, y, rx, ry), dof, -1*s.lm.level[mx][my]-2};
+                        double[] info = {r, rx, ry, dist(x, y, rx, ry), dof, s.lm.level[mx][my]};
                         objects.add(info);
                         
                         rx += xOff;
@@ -216,7 +215,7 @@ public class Player {
 
                 if(s.lm.level[mx][my] != -1){//is a block
                     if(s.lm.level[mx][my] < 0){
-                        double[] info = {r, rx, ry, dist(x, y, rx, ry), dof, -1*s.lm.level[mx][my]-2};
+                        double[] info = {r, rx, ry, dist(x, y, rx, ry), dof, s.lm.level[mx][my]};
                         objects.add(info);
                         
                         rx += xOff;
@@ -286,8 +285,20 @@ public class Player {
                 if(disT/Math.cos(ca) >= dist){
                     for(int h = 0; h < objects.size(); h++){
                         double[] info = objects.get(h);
-
-                        if(info[3] == dist) drawObject(g, info[0], info[1], info[2], info[3], info[5], ra);
+                        if(info[5] == -3){
+                            int mx = (int)(info[1]/100);
+                            int my = (int)(info[2]/100);
+                            for(MovingObject obj : s.l.mObj){
+                                if(obj.mapX == mx && obj.mapY == my){ if(info[3] == dist) obj.drawObj(g, info, ra); }
+                                else{
+                                    for(int s = 0; s < obj.spots.size(); s++){
+                                        if(obj.spots.get(s)[0] == mx && obj.spots.get(s)[1] == my){
+                                            if(info[3] == dist) obj.drawObj(g, info, ra);
+                                        }
+                                    }
+                                }
+                            }
+                        } else if(info[3] == dist) drawObject(g, info[0], info[1], info[2], info[3], -1*info[5]-2, ra);
                     }
                 }
             }
