@@ -12,7 +12,7 @@ public final class SpriteManager {
     BufferedImage[] textures = new BufferedImage[10];
     BufferedImage[] flippedTex = new BufferedImage[10];
     
-    BufferedImage[] objects = new BufferedImage[5];
+    BufferedImage[] objects = new BufferedImage[6];
     
     public SpriteManager(Screen s){
         this.s = s;
@@ -25,7 +25,7 @@ public final class SpriteManager {
         flippedTex[0] = flipImage(textures[0]);
         textures[1] = loadImage("paint\\textures\\wood.png");
         flippedTex[1] = flipImage(textures[1]);
-        textures[2] = loadImage("paint\\textures\\stone.jpg");
+        textures[2] = loadImage("paint\\textures\\stone.png");
         flippedTex[2] = flipImage(textures[2]);
         textures[3] = loadImage("paint\\textures\\redbrick.png");
         flippedTex[3] = flipImage(textures[3]);
@@ -47,6 +47,7 @@ public final class SpriteManager {
         objects[2] = loadImage("paint\\objects\\fire.png");
         objects[3] = loadImage("paint\\objects\\greenlight.png");
         objects[4] = loadImage("paint\\objects\\enemy.png");
+        objects[5] = loadImage("paint\\objects\\bullet.png");
     }
     
     public BufferedImage loadImage(String path){
@@ -59,11 +60,11 @@ public final class SpriteManager {
         }
         return tempImage;
     }
-    public BufferedImage grabSubTex(BufferedImage tex, double x, int width){
+    public BufferedImage grabSubTex(BufferedImage tex, double x, int width, int blockSize){
         BufferedImage img;
         try{
-            double imgX = (x/100)*tex.getWidth();//getting location relative to image
-            double imgW = ((double)width/100)*tex.getWidth();//getting width relative to image
+            double imgX = (x/blockSize)*tex.getWidth();//getting location relative to image
+            double imgW = ((double)width/blockSize)*tex.getWidth();//getting width relative to image
             if(imgW < 1) imgW = 1;
 
             if((imgX+imgW) > tex.getWidth()) imgW = tex.getWidth()-(int)imgX;

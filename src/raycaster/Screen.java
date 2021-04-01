@@ -1,6 +1,9 @@
 package raycaster;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.swing.*;
 
 public final class Screen extends JPanel implements ActionListener, KeyListener, MouseListener{
@@ -18,6 +21,8 @@ public final class Screen extends JPanel implements ActionListener, KeyListener,
     long nowTime, pastTime;
     int frames, fps = 80;
     double deltaTime = 1;
+    
+    File shot = new File("shot.wav");
     
     public Screen(JFrame frame){
         this.frame = frame;
@@ -57,6 +62,7 @@ public final class Screen extends JPanel implements ActionListener, KeyListener,
         if(miniMap) l.miniMap(g);
         
         FPS(g);
+        
     }
     public void FPS(Graphics g){
         frames++;
@@ -76,6 +82,7 @@ public final class Screen extends JPanel implements ActionListener, KeyListener,
         g.setFont(new Font("arial", Font.BOLD, 20));
         g.drawString("FPS: " + Integer.toString(fps), 0, 20);
     }
+    
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
         
@@ -89,8 +96,8 @@ public final class Screen extends JPanel implements ActionListener, KeyListener,
         if(key == KeyEvent.VK_A) p.moving[4] = true;
         if(key == KeyEvent.VK_D) p.moving[5] = true;
         
-        if(key == KeyEvent.VK_UP) p.size++;
-        if(key == KeyEvent.VK_DOWN) p.size--;
+        if(key == KeyEvent.VK_UP) p.resG++;
+        if(key == KeyEvent.VK_DOWN) p.resG--;
     }
     public void keyReleased(KeyEvent e) {
         int key = e.getKeyCode();
@@ -103,46 +110,20 @@ public final class Screen extends JPanel implements ActionListener, KeyListener,
         if(key == KeyEvent.VK_A) p.moving[4] = false;
         if(key == KeyEvent.VK_D) p.moving[5] = false;
     }
-    public void moveMouse(Point p) {
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice[] gs = ge.getScreenDevices();
-
-        // Search the devices for the one that draws the specified point.
-        for (GraphicsDevice device: gs) {
-            GraphicsConfiguration[] configurations = device.getConfigurations();
-            for (GraphicsConfiguration config: configurations) {
-                Rectangle bounds = config.getBounds();
-                if(bounds.contains(p)) {
-                    // Set point to screen coordinates.
-                    Point b = bounds.getLocation(); 
-                    Point s = new Point(p.x - b.x, p.y - b.y);
-
-                    try {
-                        Robot r = new Robot(device);
-                        r.mouseMove(s.x, s.y);
-                    } catch (AWTException e) {
-                        e.printStackTrace();
-                    }
-
-                    return;
-                }
-            }
-        }
-        // Couldn't move to the point, it may be off screen.
-        return;
-    }
     public void mousePressed(MouseEvent e) {
-        Ray shot = new Ray(this);
-        shot.shootRay(p.pa, p.x, p.y);
-        
-        if(shot.blockT == -3){
-            int mx = (int)(shot.rx/100);
-            int my = (int)(shot.ry/100);
-            
-            lm.level[mx][my] = -1;
-        }
+        p.shooting = true;
     }
-    public void mouseReleased(MouseEvent e) {}
+    public void mouseReleased(MouseEvent e) {
+        p.shooting = false;
+    }
+    public void PlaySound(File sound){
+        try{
+            Clip clip = AudioSystem.getClip();
+            clip.open(AudioSystem.getAudioInputStream(sound));
+            clip.start();
+            
+        } catch(Exception e){}
+    }
     
     public void keyTyped(KeyEvent e) {}
     public void mouseClicked(MouseEvent e) {}

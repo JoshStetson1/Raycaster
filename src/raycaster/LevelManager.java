@@ -8,6 +8,8 @@ public class LevelManager {
     
     int[][] level, floor, ceiling;
     
+    int[][] blockLayout;
+    
     public LevelManager(Screen s){
         this.s = s;
     }
@@ -24,6 +26,7 @@ public class LevelManager {
         int w = img.getWidth();
         int h = img.getHeight();
         level = new int[w][h];//making level array
+        blockLayout = new int[w][h];
         
         //go through the level image
         for(int yy = 0; yy < h; yy++){
@@ -34,6 +37,7 @@ public class LevelManager {
                 int blue = (pixel) & 0xff;
                 
                 boolean addBlock = true;
+                level[xx][yy] = -1;
                 
                 //blocks
                 if(red == 255 && green == 255 && blue == 0) level[xx][yy] = 0;
@@ -46,25 +50,26 @@ public class LevelManager {
                 //else if(red == 0 && green == 255 && blue == 0) level[xx][yy] = 7;
                 
                 //objects
-                else if(red == 0 && green == 255 && blue == 0) level[xx][yy] = -2;
+                else if(red == 0 && green == 255 && blue == 0) {s.l.mObj.add(new MovingObject(s, xx*100, yy*100, s.sm.objects[0]));}
                 else if(red == 191 && green == 127 && blue == 0) level[xx][yy] = -3;
                 else if(red == 255 && green == 127 && blue == 0) level[xx][yy] = -4;
                 else if(red == 191 && green == 191 && blue == 191){ level[xx][yy] = -5; addBlock = false;}
-                else if(red == 0 && green == 0 && blue == 127){ level[xx][yy] = -6; s.l.mObj.add(new MovingObject(s, xx*100, yy*100)); addBlock = false;}
+                else if(red == 0 && green == 0 && blue == 127){s.l.e.add(new Enemy(s, xx*100, yy*100)); addBlock = false;}
                 
                 //other
                 else if(red == 0 && green == 0 && blue == 255){//pixel is blue, set player position
                     s.p.x = xx*100 + 50;
                     s.p.y = yy*100 + 50;
-                    level[xx][yy] = -1;
                     addBlock = false;
                 } else{
-                    level[xx][yy] = -1;
                     if(red != 255) System.out.println(red + " " + green + " " + blue);
                     addBlock = false;
                 }
 
-                if(addBlock) s.l.b.add(new Block(s, xx*100, yy*100, s.l.b.size()+1));
+                if(addBlock){
+                    s.l.b.add(new Block(s, xx*100, yy*100, s.l.b.size()+1));
+                    blockLayout[xx][yy] = 1;
+                }
             }
         }
     }
@@ -96,5 +101,15 @@ public class LevelManager {
         }
         
         return level;
+    }
+    public void printMap(int[][] map){
+        int w = map.length;
+        int h = map[0].length;
+        
+        for(int yy = 0; yy < h; yy++){
+            for(int xx = 0; xx < w; xx++) System.out.print(map[xx][yy] + " ");
+            System.out.println();
+        }
+        System.out.println();
     }
 }

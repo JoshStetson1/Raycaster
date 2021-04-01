@@ -1,6 +1,7 @@
 package raycaster;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.RescaleOp;
 import java.util.Arrays;
 import java.util.LinkedList;
 
@@ -8,32 +9,57 @@ public class Player {
     Screen s;
     
     double x, y, velX, velY;
-    double dx, dy, pa = 0;//players angle and directions of player
+    double dx, dy, pa = 3*Math.PI/2;//players angle and directions of player
     boolean[] moving = new boolean[6];
+    int health = 100;
+    boolean isDead;
+    int mapX, mapY;
     
     double dr = (Math.PI*2)/360;//one degree in radians
     int res = 2;//resolution
     int resG = 2;//ground resolution
     
-    int speed = 10;
+    int height = 0;
+    
+    int speed = 15;
     int size = 2;
+    
+    int light = 500;
+    int depth = 900;
     
     BufferedImage sunset;
     
+    Weapon gun;
+    boolean shooting;
+    
     public Player(Screen s){
         this.s = s;
+        
+        mapX = (int)(x/100);
+        mapY = (int)(y/100);
         
         dx = Math.cos(pa)*30;
         dy = Math.sin(pa)*30;
         
         sunset = s.sm.loadImage("paint\\sunset.jpg");
+        
+        gun = new Weapon(s, true, 1, 3, 0.2, 30);
     }
     public void tick(){
+        if(isDead) return;
+        
+        if((int)(x/100) != mapX){ s.lm.blockLayout[mapX][mapY] = 0; mapX = (int)(x/100);}
+        if((int)(y/100) != mapY){ s.lm.blockLayout[mapX][mapY] = 0; mapY = (int)(y/100);}
+        
+        s.lm.blockLayout[(int)(x/100)][(int)(y/100)] = 2;
+        
         x += velX;
         y += velY;
         
         movement();
         //collisions();
+        
+        if(shooting) gun.shoot(pa, x, y, "player");
     }
     public void movement(){
         if(s.miniMap){//cant move while looking at minimap
@@ -42,12 +68,12 @@ public class Player {
         
         //rotations
         if(moving[4]){//looking left
-            pa -= 0.017 *s.deltaTime;
+            pa -= 0.015 *s.deltaTime;
             if(pa < 0) pa+=2*Math.PI;
             dx = Math.cos(pa)*50;
             dy = Math.sin(pa)*50;
         } else if(moving[5]){//looking right
-            pa += 0.017 *s.deltaTime;
+            pa += 0.015 *s.deltaTime;
             if(pa > 2*Math.PI) pa-=2*Math.PI;
             dx = Math.cos(pa)*50;
             dy = Math.sin(pa)*50;
@@ -61,17 +87,17 @@ public class Player {
             velY = -dy/speed *s.deltaTime;
         }
         if(moving[2]){//move left
-            if(moving[0] || moving[1]){
-                velX = ((velX*speed)-(Math.cos(pa+(Math.PI*0.5))*50))/(speed*5) *s.deltaTime;
-                velY = ((velY*speed)+(Math.sin(pa-(Math.PI*0.5))*50))/(speed*5) *s.deltaTime;
+            if(moving[0] || moving[1]){//strafe
+                velX = ((velX*speed)-(Math.cos(pa+(Math.PI*0.5))*50))/(speed*2) *s.deltaTime;
+                velY = ((velY*speed)+(Math.sin(pa-(Math.PI*0.5))*50))/(speed*2) *s.deltaTime;
             } else{
                 velX = -(Math.cos(pa+(Math.PI*0.5))*50)/speed *s.deltaTime;
                 velY = (Math.sin(pa-(Math.PI*0.5))*50)/speed *s.deltaTime;
             }
         } else if(moving[3]){//move right
-            if(moving[0] || moving[1]){
-                velX = ((velX*speed)+(Math.cos(pa+(Math.PI*0.5))*50))/(speed*5) *s.deltaTime;
-                velY = ((velY*speed)-(Math.sin(pa-(Math.PI*0.5))*50))/(speed*5) *s.deltaTime;
+            if(moving[0] || moving[1]){//strafe
+                velX = ((velX*speed)+(Math.cos(pa+(Math.PI*0.5))*50))/(speed*2) *s.deltaTime;
+                velY = ((velY*speed)-(Math.sin(pa-(Math.PI*0.5))*50))/(speed*2) *s.deltaTime;
             } else{
                 velX = (Math.cos(pa+(Math.PI*0.5))*50)/speed *s.deltaTime;
                 velY = -(Math.sin(pa-(Math.PI*0.5))*50)/speed *s.deltaTime;
@@ -116,6 +142,10 @@ public class Player {
             if(s.lm.level[pointX][(int)(y/100)] != -1) velX = 0;
             if(s.lm.level[(int)(x/100)][pointY] != -1) velY = 0;
         }
+    }//not in use
+    public void takeDamage(int damage){
+        health -= damage;
+        if(health <= 0) isDead = true;
     }
     public void paint(Graphics g){
         Graphics2D g2 = (Graphics2D)g;
@@ -123,10 +153,6 @@ public class Player {
         moveSky(g);
         
         draw3DWorld(g);
-        
-        //g.setColor(Color.red);
-        //g.drawLine((int)x, (int)y, (int)(dx+x), (int)(dy+y));
-        //g.fillRect(s.getWidth()/2 -5, s.getHeight()/2 - 5, 10, 10);
     }
     public void moveSky(Graphics g){
         double circleW = s.getWidth()*(2*Math.PI);
@@ -152,6 +178,284 @@ public class Player {
         }
     }
     public void draw3DWorld(Graphics g){
+        double ra;//ray angle
+        ra = pa-dr*30;//starting angle
+        if(ra < 0) ra += 2*Math.PI; if(ra > 2*Math.PI) ra -= 2*Math.PI;//limits for that angle
+        
+        double[] wallDists = new double[600/res];
+        for(int r = 0; r < 600/res; r++){//making rays
+            Ray ray = new Ray(s);
+            ray.shootRay(r, ra, x, y, false, s.lm.level);
+            double rx = ray.info[0], ry = ray.info[1];
+            double disH = ray.info[2], disV = ray.info[3], disT = ray.info[4];
+            int blockT = (int)ray.info[5];
+            LinkedList<double[]> objects = ray.objects;
+            
+            //fixing weird camera effect
+            double ca = pa-ra;
+            if(ca < 0) ca += 2*Math.PI; if(ca > 2*Math.PI) ca -= 2*Math.PI;
+            disT = disT*Math.cos(ca);
+
+            double loc = 0;//location where the ray hit the block
+            boolean flip = false;
+            if(disH < disV){
+                loc = -1*(((int)(rx/100)*100)-(int)rx);
+                if(ra < Math.PI) flip = true;
+            }
+            else if(disV < disH){
+                loc = -1*(((int)(ry/100)*100)-(int)ry);
+                if(ra > Math.PI/2 && ra < 1.5*Math.PI) flip = true;
+            }
+
+            double lineH = (100*s.getWidth())/disT;
+            double lineY = (s.getHeight()/2)-(lineH/2) + (height/disT);
+            
+            //------------Drawing Ceiling And Ground---------------
+            
+            if(r % resG == 0) CeilingAndGround(g, r, ra, lineY, lineH);
+            
+            //------------Drawing Walls---------------
+            
+            BufferedImage img;
+            if(flip) img = (s.sm.grabSubTex(s.sm.flippedTex[blockT], loc, res, 100));
+            else img = (s.sm.grabSubTex(s.sm.textures[blockT], loc, res, 100));
+            //shading
+            float dark = (float)(depth-(disT/Math.cos(ca)))/light;
+            if(dark > 1) dark = 1;
+            
+            //RescaleOp op = new RescaleOp(new float[]{dark, dark, dark}, new float[]{0, 0, 0}, null);
+            //img = op.filter(img, null);
+            g.drawImage(img, r*res, (int)lineY, res, (int)lineH, s);
+            
+            //------------Drawing Objects---------------
+            
+            double[] distances = new double[objects.size()];
+            for(int i = 0; i < objects.size(); i++) distances[i] = objects.get(i)[3];
+            Arrays.sort(distances);
+            
+            for(int i = distances.length-1; i >= 0; i--){
+                double dist = distances[i];
+                
+                if(disT/Math.cos(ca) >= dist){
+                    for(int h = 0; h < objects.size(); h++){
+                        double[] info = objects.get(h);
+                        if(info[3] == dist) drawObject(g, info[0], info[1], info[2], info[3], -1*info[5]-2, ra, dark);
+                    }
+                }
+            }
+            
+            wallDists[r] = disT/Math.cos(ca);
+            ra+=dr/10 * res;//add another degree
+            if(ra < 0) ra += 2*Math.PI; if(ra > 2*Math.PI) ra -= 2*Math.PI;//limits for new degree
+        }
+        drawObjects(g, wallDists);
+    }
+    public void drawObjects(Graphics g, double[] wallDists){
+        LinkedList<MovingObject> objToRender = new LinkedList<>();
+        int renderNum = 0;
+        for(MovingObject obj : s.l.mObj){
+            double angToPlayer = Math.atan2((obj.y - y), (obj.x - x));
+            if(diff(pa, angToPlayer) < dr*35){//is in players feild of veiw
+                objToRender.add(obj);
+                renderNum++;
+            }
+        }
+        double[] distances = new double[renderNum];
+        for(int i = 0; i < objToRender.size(); i++){
+            MovingObject obj = objToRender.get(i);
+            double distToPlayer = dist(x, y, obj.x, obj.y);
+            distances[i] = distToPlayer;
+        }
+        Arrays.sort(distances);
+        LinkedList<MovingObject> objInOrder = new LinkedList<>();
+        for(int i = distances.length-1; i >= 0; i--){
+            double dist = distances[i];
+            
+            for(MovingObject obj : objToRender){
+                double distToPlayer = dist(x, y, obj.x, obj.y);
+                if(distToPlayer == dist) objInOrder.add(obj);
+            }
+        }
+        
+        for(MovingObject obj : objInOrder){
+            double angToPlayer = Math.atan2((obj.y - y), (obj.x - x));
+            //System.out.println(Math.abs(angToPlayer) + " " + pa + " " + diff(pa, angToPlayer));
+            //if(diff(pa, angToPlayer) < dr*35){//is in players feild of veiw
+                double distToPlayer = dist(x, y, obj.x, obj.y);
+                
+                double ang = (pa-angToPlayer);
+                double xDis = Math.sin(ang)*distToPlayer;
+                double yDis = Math.cos(ang)*distToPlayer;
+                double objSize = (100*s.getWidth())/yDis;
+                double objY = s.getHeight()/2 - objSize/2  + (height/distToPlayer);
+
+                double screenSpace = 2*(Math.tan(dr*30)*yDis);
+                double scale = s.getWidth()/screenSpace;
+                double objX = s.getWidth()/2 - xDis*scale - objSize/2;
+                
+                //g.drawImage(obj.sprite, (int)objX, (int)objY , (int)objSize, (int)objSize, s);
+                
+                for(int xx = 0; xx < (int)objSize; xx++){
+                    int loc = ((int)objX + xx)/res;
+                    if(loc < wallDists.length && loc > 0){
+                        if(!(wallDists[loc] < distToPlayer)){
+                            g.drawImage(s.sm.grabSubTex(obj.sprite, xx, 1, (int)objSize), (int)objX + xx, (int)objY, 1, (int)objSize, s);
+                            wallDists[loc] = distToPlayer;
+                        }
+                    }
+                }
+            //} //else System.out.println(angToPlayer + " " + limitFor(pa-(dr*30)) + " " + limitFor(pa+(dr*30)));
+        }
+    }
+    public void drawObject(Graphics g, double r, double rx, double ry, double disT, double blockT, double ra, float dark){
+        int middleX = (int)(rx/100) * 100 + 50;//middle of block
+        int middleY = (int)(ry/100) * 100 + 50;//middle of block
+        double distA = Math.atan2(y - middleY, x - middleX);//angle of distance
+        double horzPa = pa+(0.5*Math.PI);//horizontal angle relative to pa angle
+
+        double angX = limitFor(distA - horzPa);
+
+        disT = dist(x, y, middleX, middleY);//distance from player to center of block
+        disT = disT * Math.sin(angX);
+
+        double horzA = ra+(0.5*Math.PI);//horizontal angle relative to ra angle
+        double hitA = Math.atan2(ry - middleY, rx - middleX);//angle of hit point to center of block
+
+        double angle = limitFor(horzA - hitA);//angle between the horizontal angle and hit point
+
+        double distance = dist(rx, ry, middleX, middleY);//distance from hit point to center of lock
+        distance = distance*Math.cos(angle);//the x distance from hit point to center of block relative to the rays angle
+        
+        double lineH = (100*s.getWidth())/disT;
+        double lineY = (s.getHeight()/2)-(lineH/2) + (height/disT);
+        
+        double loc = 50+(int)distance;
+
+        BufferedImage img = (s.sm.grabSubTex(s.sm.objects[(int)blockT], loc, res, 100));
+        if(img != null){
+            //RescaleOp op = new RescaleOp(new float[]{dark, dark, dark, 1f}, new float[]{0, 0, 0, 0}, null);
+            //img = op.filter(img, null);
+            g.drawImage(img, (int)r*res, (int)lineY, res, (int)lineH, s);
+        }
+    }
+    public void CeilingAndGround(Graphics g, int r, double ra, double lineY, double lineH){
+        for(int yy = (int)(lineY+lineH); yy < s.getHeight(); yy++){
+            double mid = yy - s.getHeight()/2;
+            double raFix = Math.cos(pa-ra);
+            
+            try{
+                double tx = x/2 + Math.cos(ra)*(145+(height/200))*100/mid/raFix;
+                double ty = y/2 + Math.sin(ra)*(145+(height/200))*100/mid/raFix;
+                double dist = dist(x/2, y/2, tx, ty);
+
+                int mx = (int)(tx/50);
+                int my = (int)(ty/50);
+                //----------Floor-------------
+                int tex = s.lm.floor[mx][my];
+                
+                BufferedImage texture = s.sm.textures[tex];
+                int texSize = texture.getHeight();
+
+                tx = (int)(tx)%50;//break into blocks
+                ty = (int)(ty)%50;
+
+                tx = (tx/50) * texSize;//find location on the texure relative to block
+                ty = (ty/50) * texSize;
+
+                tx = Math.abs(tx);//get absolute value so no negatives
+                ty = Math.abs(ty);
+                
+                float dark = (float)(depth-(dist*2))/(light*2);
+                dark = 1;
+                
+                g.setColor(changeColor(new Color((texture.getRGB((int)tx, (int)ty))), dark));
+                g.fillRect(r*res, yy, res*resG, res);//floor
+                
+                //----------Ceiling-------------
+                tx = x/2 + Math.cos(ra)*(145-(height/200))*100/mid/raFix;
+                ty = y/2 + Math.sin(ra)*(145-(height/200))*100/mid/raFix;
+
+                mx = (int)(tx/50);
+                my = (int)(ty/50);
+            
+                if(s.lm.floor[mx][my] >= 0){
+                    tex = s.lm.ceiling[mx][my];
+                    texture = s.sm.textures[tex];
+                    texSize = texture.getHeight();
+
+                    tx = (int)(tx)%50;//break into blocks
+                    ty = (int)(ty)%50;
+
+                    tx = (tx/50) * texSize;//find location on the texure relative to block
+                    ty = (ty/50) * texSize;
+
+                    tx = Math.abs(tx);//get absolute value so no negatives
+                    ty = Math.abs(ty);
+
+                    dark = (float)(depth-(dist*3))/(light*3);
+                    dark = 1;
+                    
+                    g.setColor(changeColor(new Color((texture.getRGB((int)tx, (int)ty))), dark));
+                    g.fillRect(r*res, s.getHeight()/2 - (yy-s.getHeight()/2), res*resG, res);//ceiling
+                }
+            } catch(Exception e){ }
+        }
+    }
+    public Color changeColor(Color color, double change){
+        int red = color.getRed();
+        int green = color.getGreen();
+        int blue = color.getBlue();
+        
+        double red2 = red*change;
+        if(red2 > 255) red2 = 255; if(red2 < 0) red2 = 0;
+        double green2 = green*change;
+        if(green2 > 255) green2 = 255; if(green2 < 0) green2 = 0;
+        double blue2 = blue*change;
+        if(blue2 > 255) blue2 = 255; if(blue2 < 0) blue2 = 0;
+        
+        return new Color((int)red2, (int)green2, (int)blue2);
+    }
+    
+    public int radToDeg(double ang){
+        return (int)(ang*360 / (2*Math.PI));
+    }
+    public double limitFor(double angle){
+        if(angle < 0) angle += 2*Math.PI; if(angle > 2*Math.PI) angle -= 2*Math.PI;//limits for new degree
+        return angle;
+    }
+    public double diff(double ang1, double ang2){
+        double finalDiff;
+        double diff1 = Math.abs(ang1 - ang2);
+        double diff2 = Math.abs(Math.PI*2 - diff1);
+        
+        if(diff1 < diff2) finalDiff = diff1;
+        else finalDiff = diff2;
+        
+        return finalDiff;
+    }
+    public double dist(double ax, double ay, double bx, double by){
+        double num = ((bx-ax)*(bx-ax) + (by-ay)*(by-ay));//pythag
+        
+        return Math.sqrt(num);
+    }
+    //for collisions
+    public Rectangle bounds(){
+        return new Rectangle((int)x-50, (int)y-50, 100, 100);
+    }
+    public Rectangle top(){
+        return new Rectangle((int)x-40, (int)y-50, 80, 10);
+    }
+    public Rectangle bottom(){
+        return new Rectangle((int)x-40, (int)y+40, 80, 10);
+    }
+    public Rectangle right(){
+        return new Rectangle((int)x+40, (int)y-40, 10, 80);
+    }
+    public Rectangle left(){
+        return new Rectangle((int)x-50, (int)y-40, 10, 80);
+    }
+    
+    public void draw3DWorld2(Graphics g){
         //r means the ray, rx = x coordinate of the ray
         double ra, rx, ry, xOff=0, yOff=0, disT=0;
         //ray angle, x point where ray will hit, y point where ray will hit, x offset to check next line, y offset to check next line, final distance of that ray
@@ -275,15 +579,13 @@ public class Player {
             else if(disV < disH){//vertical ray is smaller than horizontal one
                 rx = vx; ry = vy; disT = disV; blockT = blockV;
             }
-            //------------Drawing Rays---------------
-            double loc = 0;//location where the ray hit the block
-            boolean flip = false;
-
             //fixing weird camera effect
             double ca = pa-ra;
             if(ca < 0) ca += 2*Math.PI; if(ca > 2*Math.PI) ca -= 2*Math.PI;
             disT = disT*Math.cos(ca);
 
+            double loc = 0;//location where the ray hit the block
+            boolean flip = false;
             if(disH < disV){
                 loc = -1*(((int)(rx/100)*100)-(int)rx);
                 if(ra < Math.PI) flip = true;
@@ -294,22 +596,29 @@ public class Player {
             }
 
             double lineH = (100*s.getWidth())/disT;
-            double lineY = (s.getHeight()/2)-(lineH/2);
+            double lineY = (s.getHeight()/2)-(lineH/2) + (height/disT);
             
             //------------Drawing Ceiling And Ground---------------
+            
             if(r % resG == 0) CeilingAndGround(g, r, ra, lineY, lineH);
             
             //------------Drawing Walls---------------
+            
             BufferedImage img;
-            if(flip) img = (s.sm.grabSubTex(s.sm.flippedTex[blockT], loc, res));
-            else img = (s.sm.grabSubTex(s.sm.textures[blockT], loc, res));
-
+            if(flip) img = (s.sm.grabSubTex(s.sm.flippedTex[blockT], loc, res, 100));
+            else img = (s.sm.grabSubTex(s.sm.textures[blockT], loc, res, 100));
+            //shading
+            float dark = (float)(depth-(disT/Math.cos(ca)))/light;
+            if(dark > 1) dark = 1;
+            
+            RescaleOp op = new RescaleOp(new float[]{dark, dark, dark}, new float[]{0, 0, 0}, null);
+            img = op.filter(img, null);
             g.drawImage(img, r*res, (int)lineY, res, (int)lineH, s);
             
             //------------Drawing Objects---------------
+            
             double[] distances = new double[objects.size()];
             for(int i = 0; i < objects.size(); i++) distances[i] = objects.get(i)[3];
-            
             Arrays.sort(distances);
             
             for(int i = distances.length-1; i >= 0; i--){
@@ -318,20 +627,7 @@ public class Player {
                 if(disT/Math.cos(ca) >= dist){
                     for(int h = 0; h < objects.size(); h++){
                         double[] info = objects.get(h);
-                        if(info[5] == -6){
-                            int mx = (int)(info[1]/100);
-                            int my = (int)(info[2]/100);
-                            for(MovingObject obj : s.l.mObj){
-                                if(obj.mapX == mx && obj.mapY == my){ if(info[3] == dist) obj.drawObj(g, info, ra); }
-                                else{
-                                    for(int s = 0; s < obj.spots.size(); s++){
-                                        if(obj.spots.get(s)[0] == mx && obj.spots.get(s)[1] == my){
-                                            if(info[3] == dist) obj.drawObj(g, info, ra);
-                                        }
-                                    }
-                                }
-                            }
-                        } else if(info[3] == dist) drawObject(g, info[0], info[1], info[2], info[3], -1*info[5]-2, ra);
+                        if(info[3] == dist) drawObject(g, info[0], info[1], info[2], info[3], -1*info[5]-2, ra, dark);
                     }
                 }
             }
@@ -340,143 +636,35 @@ public class Player {
             if(ra < 0) ra += 2*Math.PI; if(ra > 2*Math.PI) ra -= 2*Math.PI;//limits for new degree
         }
     }
-    public void drawObject(Graphics g, double r, double rx, double ry, double disT, double blockT, double ra){
-        int middleX = (int)(rx/100) * 100 + 50;//middle of block
-        int middleY = (int)(ry/100) * 100 + 50;//middle of block
-        double distA = Math.atan2(y - middleY, x - middleX);//angle of distance
-        double horzPa = pa+(0.5*Math.PI);//horizontal angle relative to pa angle
-
-        double angX = distA - horzPa;
-        if(angX < 0) angX += 2*Math.PI; if(angX > 2*Math.PI) angX -= 2*Math.PI;
-
-        disT = dist(x, y, middleX, middleY);//distance from player to center of block
-        disT = disT * Math.sin(angX);
-
-        double horzA = ra+(0.5*Math.PI);//horizontal angle relative to ra angle
-        double hitA = Math.atan2(ry - middleY, rx - middleX);//angle of hit point to center of block
-
-        double angle = horzA - hitA;//angle between the horizontal angle and hit point
-        if(angle < 0) angle += 2*Math.PI; if(angle > 2*Math.PI) angle -= 2*Math.PI;
-
-        double distance = dist(rx, ry, middleX, middleY);//distance from hit point to center of lock
-        distance = distance*Math.cos(angle);//the x distance from hit point to center of block relative to the rays angle
-        
-        double lineH = (100*s.getWidth())/disT;
-        double lineY = (s.getHeight()/2)-(lineH/2);
-        
-        double loc = 50+(int)distance;
-
-        BufferedImage img = (s.sm.grabSubTex(s.sm.objects[(int)blockT], loc, res));
-        if(img != null) g.drawImage(img, (int)r*res, (int)lineY, res, (int)lineH, s);
-    }
-    public void CeilingAndGround(Graphics g, int r, double ra, double lineY, double lineH){
-        for(int yy = (int)(lineY+lineH); yy < s.getHeight(); yy++){
-            double mid = yy - s.getHeight()/2;
-            double raFix = Math.cos(pa-ra);
-
-            double tx = x/2 + Math.cos(ra)*145*100/mid/raFix;
-            double ty = y/2 + Math.sin(ra)*145*100/mid/raFix;
-
-            int mx = (int)(tx/50);
-            int my = (int)(ty/50);
-
-            try{
-                //----------Floor-------------
-                int tex = s.lm.floor[mx][my];
-                
-                BufferedImage texure = s.sm.textures[tex];
-                int texSize = texure.getHeight();
-
-                tx = (int)(tx)%50;//break into blocks
-                ty = (int)(ty)%50;
-
-                tx = (tx/50) * texSize;//find location on the texure relative to block
-                ty = (ty/50) * texSize;
-
-                tx = Math.abs(tx);//get absolute value so no negatives
-                ty = Math.abs(ty);
-                
-                BufferedImage pixel = texure.getSubimage((int)tx, (int)ty, 1, 1);
-                g.setColor(new Color(pixel.getRGB(0, 0)));
-                g.fillRect(r*res, yy, res*resG, res);//floor
-                
-                //----------Ceiling-------------
-                if(s.lm.floor[mx][my] >= 0){
-                    tex = s.lm.ceiling[mx][my];
-                    texure = s.sm.textures[tex];
-                    texSize = texure.getHeight();
-
-                    tx = (int)(tx)%50;//break into blocks
-                    ty = (int)(ty)%50;
-
-                    tx = (tx/50) * texSize;//find location on the texure relative to block
-                    ty = (ty/50) * texSize;
-
-                    tx = Math.abs(tx);//get absolute value so no negatives
-                    ty = Math.abs(ty);
-
-                    pixel = texure.getSubimage((int)tx, (int)ty, 1, 1);
-                    g.setColor(new Color(pixel.getRGB(0, 0)));
-                    g.fillRect(r*res, s.getHeight()/2 - (yy-s.getHeight()/2), res*resG, res);//ceiling
-                }
-            } catch(Exception e){ }
-
-        }
-    }
-    
-    public double dist(double ax, double ay, double bx, double by){
-        double num = ((bx-ax)*(bx-ax) + (by-ay)*(by-ay));//pythag
-        
-        return Math.sqrt(num);
-    }
-    //for collisions
-    public Rectangle top(){
-        return new Rectangle((int)x-5, (int)y-25, 10, 25);
-    }
-    public Rectangle bottom(){
-        return new Rectangle((int)x-5, (int)y, 10, 25);
-    }
-    public Rectangle left(){
-        return new Rectangle((int)x-25, (int)y-5, 25, 10);
-    }
-    public Rectangle right(){
-        return new Rectangle((int)x, (int)y-5, 25, 10);
-    }
 }
 /*
-//------------Drawing Objects---------------
-            LinkedList<double[]> objects1;
-            LinkedList<double[]> objects2;
-            
-            if(objectsH.size() >= objectsV.size()){
-                objects1 = objectsH;
-                objects2 = objectsV;
-            } else{
-                objects1 = objectsV;
-                objects2 = objectsH;
-            }
-            //System.out.println(objectsH.size() + " " + objectsV.size());
-            for(int h = objects1.size()-1; h >= 0; h--){
-                double[] info1 = objects1.get(h);
-                int mapXH = (int)(info1[1]/100);
-                int mapYH = (int)(info1[2]/100);
-                drawObject(g, info1[0], info1[1], info1[2], info1[3], info1[5], ra);
-                boolean drawn = false;
-                
-                if(disT/Math.cos(ca) >= info1[3]){//not going to draw if drawn block is closer
-                    for(int v = objects2.size()-1; v >= 0; v--){
-                        double[] info2 = objects2.get(v);
-                        drawObject(g, info2[0], info2[1], info2[2], info2[3], info2[5], ra);
-                        int mapXV = (int)(info2[1]/100);
-                        int mapYV = (int)(info2[2]/100);
 
-                        if(disT/Math.cos(ca) >= info2[3]){
-                            drawn = true;
-                            if(mapXH == mapXV && mapYH == mapYV){//if they hit the same block
-                                //if(info1[3] > info2[3]) drawObject(g, info1[0], info1[1], info1[2], info1[3], info1[5], ra);
-                                //else drawObject(g, info2[0], info2[1], info2[2], info2[3], info2[5], ra);
-                            }
-                        }
-                    }
+                double distToPlayer = dist(x, y, obj.x, obj.y);
+                double objHeight = (100*s.getWidth())/distToPlayer;
+                double objY = s.getHeight()/2 - objHeight/2;
+                
+                //angToPlayer = Math.atan2((y - obj.y), (x - obj.x));
+                double angle = limitFor(pa-angToPlayer);
+                double xDis = distToPlayer*Math.cos(angle);
+                double yDis = distToPlayer*Math.sin(angle);
+                double h = (1/Math.cos(dr*30) * yDis);
+                double screen = 2*Math.sqrt((h*h) - (yDis*yDis));
+                double scale = s.getWidth()/screen;
+                double objX = xDis*scale;
+                
+
+if(info[5] == -6){
+    int mx = (int)(info[1]/100);
+    int my = (int)(info[2]/100);
+    for(MovingObject obj : s.l.mObj){
+        if(obj.mapX == mx && obj.mapY == my){ if(info[3] == dist) obj.drawObj(g, info, ra); }
+        else{
+            for(int s = 0; s < obj.spots.size(); s++){
+                if(obj.spots.get(s)[0] == mx && obj.spots.get(s)[1] == my){
+                    if(info[3] == dist) obj.drawObj(g, info, ra);
                 }
+            }
+        }
+    }
+} else 
 */
