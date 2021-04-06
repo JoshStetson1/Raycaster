@@ -29,7 +29,7 @@ public class Enemy {
         s.l.mObj.add(obj);
         this.obj = obj;
         
-        gun = new Weapon(s, false, 1, 3, 0.5, 25);
+        gun = new Weapon(s, false, 1, 3, 0.5, 10);
     }
     public void tick(){
         setMapPoints();

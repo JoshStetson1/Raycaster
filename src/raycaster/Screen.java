@@ -95,9 +95,6 @@ public final class Screen extends JPanel implements ActionListener, KeyListener,
         
         if(key == KeyEvent.VK_A) p.moving[4] = true;
         if(key == KeyEvent.VK_D) p.moving[5] = true;
-        
-        if(key == KeyEvent.VK_UP) p.resG++;
-        if(key == KeyEvent.VK_DOWN) p.resG--;
     }
     public void keyReleased(KeyEvent e) {
         int key = e.getKeyCode();

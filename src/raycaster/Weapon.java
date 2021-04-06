@@ -24,6 +24,7 @@ public class Weapon {
         this.damage = damage;
         
         nowTime = System.nanoTime();
+        time = System.nanoTime();
     }
     public void shoot(double angle, double x, double y, String parent){
         if(!canShoot()) return;

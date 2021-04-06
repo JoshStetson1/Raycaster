@@ -51,9 +51,9 @@ public class LevelManager {
                 
                 //objects
                 else if(red == 0 && green == 255 && blue == 0) {s.l.mObj.add(new MovingObject(s, xx*100, yy*100, s.sm.objects[0]));}
-                else if(red == 191 && green == 127 && blue == 0) level[xx][yy] = -3;
-                else if(red == 255 && green == 127 && blue == 0) level[xx][yy] = -4;
-                else if(red == 191 && green == 191 && blue == 191){ level[xx][yy] = -5; addBlock = false;}
+                else if(red == 191 && green == 127 && blue == 0) {s.l.mObj.add(new MovingObject(s, xx*100, yy*100, s.sm.objects[1]));}
+                else if(red == 255 && green == 127 && blue == 0) {s.l.mObj.add(new MovingObject(s, xx*100, yy*100, s.sm.objects[2]));}
+                else if(red == 191 && green == 191 && blue == 191){s.l.mObj.add(new MovingObject(s, xx*100, yy*100, s.sm.objects[3])); addBlock = false;}
                 else if(red == 0 && green == 0 && blue == 127){s.l.e.add(new Enemy(s, xx*100, yy*100)); addBlock = false;}
                 
                 //other
